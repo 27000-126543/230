@@ -313,24 +313,11 @@ async function confirmExpense() {
       merchant: ocrResult.merchant
     })
     ElMessage.success('费用已提交')
-    addExpenseToList({
-      category: ocrResult.category,
-      amount: ocrResult.amount,
-      expenseDate: ocrResult.date,
-      merchant: ocrResult.merchant,
-      isAnomaly: matchResult.isAnomaly
-    })
     resetOCR()
-  } catch (e) {
-    ElMessage.success('费用已提交（演示模式）')
-    addExpenseToList({
-      category: ocrResult.category,
-      amount: ocrResult.amount,
-      expenseDate: ocrResult.date,
-      merchant: ocrResult.merchant,
-      isAnomaly: matchResult.isAnomaly
-    })
-    resetOCR()
+    await fetchExpenses()
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '提交失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -351,22 +338,13 @@ async function submitManual() {
       location: manualForm.location
     })
     ElMessage.success('录入成功')
-    addExpenseToList({
-      ...manualForm,
-      isAnomaly: false
-    })
     manualForm.amount = 0
     manualForm.merchant = ''
     manualForm.location = ''
-  } catch (e) {
-    ElMessage.success('录入成功（演示模式）')
-    addExpenseToList({
-      ...manualForm,
-      isAnomaly: false
-    })
-    manualForm.amount = 0
-    manualForm.merchant = ''
-    manualForm.location = ''
+    await fetchExpenses()
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '录入失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -391,13 +369,11 @@ async function fetchExpenses() {
   try {
     const res = await api.get(`/expenses/application/${applicationId}`)
     if (res.data.success) {
-      expenseList.splice(0, expenseList.length, ...res.data.data.expenses)
+      expenseList.splice(0, expenseList.length, ...(res.data.data.expenses || res.data.data || [])
     }
-  } catch (e) {
-    expenseList.push(
-      { category: 'transportation', amount: 2400, expenseDate: '2024-02-01', merchant: '国航', isAnomaly: false },
-      { category: 'accommodation', amount: 2000, expenseDate: '2024-02-01', merchant: '希尔顿酒店', isAnomaly: false }
-    )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载费用列表失败'
+    ElMessage.error(errorMsg)
   }
 }
 

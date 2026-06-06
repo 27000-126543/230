@@ -103,36 +103,14 @@ function formatTime(date: string) {
 
 async function fetchBookings() {
   try {
-    // 这里可以调用API获取预订列表
-  } catch (e) {}
-  bookingList.push(
-    {
-      id: 'bk1',
-      applicationId: 'app1',
-      bookingType: 'flight',
-      price: 2400,
-      status: 'CONFIRMED',
-      isLocked: false,
-      option: {
-        airline: '国航',
-        flightNo: 'CA1234',
-        departureTime: '2024-02-01T08:00:00',
-        arrivalTime: '2024-02-01T10:30:00'
-      }
-    },
-    {
-      id: 'bk2',
-      applicationId: 'app1',
-      bookingType: 'hotel',
-      price: 2000,
-      status: 'CONFIRMED',
-      isLocked: false,
-      option: {
-        hotelName: '北京希尔顿酒店',
-        address: '朝阳区东三环'
-      }
+    const res = await api.get('/travel/bookings')
+    if (res.data.success) {
+      bookingList.splice(0, bookingList.length, ...(res.data.data || []))
     }
-  )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载预订列表失败'
+    ElMessage.error(errorMsg)
+  }
 }
 
 function viewDetail(row: any) {
@@ -149,9 +127,9 @@ async function cancelBooking(row: any) {
     })
     ElMessage.success('已取消')
     row.status = 'CANCELLED'
-  } catch (e) {
-    row.status = 'CANCELLED'
-    ElMessage.success('已取消')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '取消失败'
+    ElMessage.error(errorMsg)
   }
 }
 
