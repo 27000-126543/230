@@ -209,30 +209,27 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       where.departmentId = departmentIdStr;
     }
 
+    const countWhere: any = { ...where };
+    countWhere.createdAt = { [Op.gte]: monthStart };
+
+    const pendingWhere: any = { status: 'PENDING_APPROVAL' };
+    if (employeeIdStr) pendingWhere.currentApproverId = employeeIdStr;
+
+    const expenseWhere: any = {};
+    if (employeeIdStr) expenseWhere.employeeId = employeeIdStr;
+    expenseWhere.expenseDate = { [Op.between]: [monthStart, monthEnd] };
+    expenseWhere.status = { [Op.ne]: 'REJECTED' };
+
+    const budgetWhere: any = {};
+    if (departmentIdStr) budgetWhere.departmentId = departmentIdStr;
+    budgetWhere.year = now.getFullYear();
+    budgetWhere.month = now.getMonth() + 1;
+
     const [myApplications, pendingApproval, monthExpenses, budget] = await Promise.all([
-      TravelApplication.count({ where: { ...where, createdAt: { [Op.gte]: monthStart } } as any),
-      TravelApplication.count({
-        where: {
-          status: 'PENDING_APPROVAL',
-          ...(employeeIdStr ? { currentApproverId: employeeIdStr } : {}),
-        },
-      } as any),
-      Expense.sum('amount', {
-        where: {
-          ...(employeeIdStr ? { employeeId: employeeIdStr } : {}),
-          expenseDate: { [Op.between]: [monthStart, monthEnd] },
-          status: { [Op.ne]: 'REJECTED' },
-        },
-      } as any),
-      departmentIdStr
-        ? Budget.findOne({
-            where: {
-              departmentId: departmentIdStr,
-              year: now.getFullYear(),
-              month: now.getMonth() + 1,
-            },
-          } as any)
-        : null,
+      TravelApplication.count({ where: countWhere }),
+      TravelApplication.count({ where: pendingWhere }),
+      Expense.sum('amount', { where: expenseWhere }),
+      departmentIdStr ? Budget.findOne({ where: budgetWhere }) : null,
     ]);
 
     const totalExpense = monthExpenses || 0;
@@ -280,16 +277,18 @@ export const getRecentApplications = async (req: Request, res: Response, next: N
 export const getTodoList = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { employeeId, limit = 10 } = req.query;
+    const employeeIdStr = employeeId as string | undefined;
+    const limitNum = Math.min(parseInt(limit as string), 5);
 
     const todos: any[] = [];
 
     const pendingApprovals = await TravelApplication.findAll({
       where: {
         status: 'PENDING_APPROVAL',
-        ...(employeeId ? { currentApproverId: employeeId } : {}),
-      },
+        ...(employeeIdStr ? { currentApproverId: employeeIdStr } : {}),
+      } as any,
       order: [['createdAt', 'ASC']],
-      limit: Math.min(parseInt(limit as string), 5),
+      limit: limitNum,
       attributes: ['id', 'applicationNo', 'purpose', 'destination', 'createdAt'],
     });
 
@@ -304,8 +303,8 @@ export const getTodoList = async (req: Request, res: Response, next: NextFunctio
     const anomalyExpenses = await Expense.findAll({
       where: {
         isAnomaly: true,
-        ...(employeeId ? { employeeId } : {}),
-      },
+        ...(employeeIdStr ? { employeeId: employeeIdStr } : {}),
+      } as any,
       order: [['createdAt', 'ASC']],
       limit: 3,
     });

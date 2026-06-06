@@ -96,11 +96,12 @@ class ReportService {
       const tripCount = applications.length;
       const uniqueEmployees = new Set(applications.map((a) => a.employeeId));
       const overrun = Math.max(0, totalSpent - budget.total);
-      const overrunCount = budget.usageRate > 100 ? 1 : 0;
+      const usageRate = budget.total > 0 ? (totalSpent / budget.total) * 100 : 0;
+      const overrunCount = usageRate > 100 ? 1 : 0;
 
       const approvalTimes: number[] = [];
       for (const app of applications) {
-        const approvalRecords = await app.$get('approvalRecords');
+        const approvalRecords = await (app as any).$get('approvalRecords');
         if (approvalRecords.length > 0) {
           const firstApproval = approvalRecords[0];
           const timeDiff = firstApproval.approvedAt.getTime() - app.createdAt.getTime();
@@ -388,7 +389,6 @@ class ReportService {
     ];
 
     for (const exp of result.data) {
-      const app = exp.application as any;
       sheet.addRow({
         id: exp.id,
         expenseDate: exp.expenseDate.toISOString().slice(0, 10),
@@ -397,7 +397,7 @@ class ReportService {
         merchant: exp.merchant || '',
         status: exp.status,
         isAnomaly: exp.isAnomaly ? '是' : '否',
-        applicationNo: app?.applicationNo || '',
+        applicationNo: exp.applicationId || '',
         employeeId: exp.employeeId,
       });
     }

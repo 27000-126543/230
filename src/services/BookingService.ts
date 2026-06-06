@@ -69,7 +69,7 @@ class BookingService {
       throw new Error('只有已审批通过的申请才能生成推荐');
     }
 
-    const employee = application.employee;
+    const employee = (application as any).employee;
     const preference = employee?.travelPreference || 'economy';
 
     const flights = await this.recommendFlights(
@@ -266,7 +266,7 @@ class BookingService {
     }
   }
 
-  generateCalendarEvent(application: TravelApplication, booking: Booking): icalGenerator.ICalEvent {
+  generateCalendarEvent(application: TravelApplication, booking: Booking): any {
     const cal = icalGenerator({});
     const event = cal.createEvent({
       start: application.startDate,
@@ -291,7 +291,7 @@ class BookingService {
 
     booking.status = BookingStatus.CANCELLED;
     booking.isLocked = false;
-    booking.lockedUntil = null;
+    (booking as any).lockedUntil = null;
     await booking.save();
 
     logger.info(`取消预订 - 预订ID: ${bookingId}, 操作人: ${operatorId}`);
@@ -328,7 +328,7 @@ class BookingService {
   async unlockExpiredLocks(): Promise<number> {
     const now = new Date();
     const [affectedCount] = await Booking.update(
-      { isLocked: false, lockedUntil: null },
+      { isLocked: false, lockedUntil: null as any },
       {
         where: {
           isLocked: true,

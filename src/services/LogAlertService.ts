@@ -47,7 +47,7 @@ class LogAlertService {
         type: AlertType.SYSTEM_ERROR,
         severity: params.level === LogLevel.CRITICAL ? AlertSeverity.CRITICAL : AlertSeverity.HIGH,
         title: `系统${params.level === LogLevel.CRITICAL ? '严重' : ''}错误`,
-        message: params.details?.message || '未知错误',
+        message: String(params.details?.message || '未知错误'),
         resourceType: params.resourceType,
         resourceId: params.resourceId,
         metadata: params.details,

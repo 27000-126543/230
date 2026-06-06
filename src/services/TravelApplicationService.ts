@@ -8,6 +8,7 @@ import {
   Employee,
   Department,
   ApprovalRecord,
+  ApprovalAction,
   EmployeeRole,
 } from '../models';
 import BudgetService from './BudgetService';
@@ -342,7 +343,7 @@ class TravelApplicationService {
           approverRole: approver.role,
           approverName: approver.name,
           approvalLevel: application.approvalLevel,
-          action: 'approve',
+          action: ApprovalAction.APPROVE,
           comments,
         },
         { transaction: t }
@@ -373,7 +374,7 @@ class TravelApplicationService {
       }
 
       application.status = TravelApplicationStatus.APPROVED;
-      application.currentApproverId = null;
+      (application as any).currentApproverId = null;
       await application.save({ transaction: t });
 
       await t.commit();
@@ -426,7 +427,7 @@ class TravelApplicationService {
           approverRole: approver.role,
           approverName: approver.name,
           approvalLevel: application.approvalLevel,
-          action: 'reject',
+          action: ApprovalAction.REJECT,
           comments: rejectionReason,
         },
         { transaction: t }
@@ -440,7 +441,7 @@ class TravelApplicationService {
       );
 
       application.status = TravelApplicationStatus.REJECTED;
-      application.currentApproverId = null;
+      (application as any).currentApproverId = null;
       application.rejectionReason = rejectionReason;
       await application.save({ transaction: t });
 

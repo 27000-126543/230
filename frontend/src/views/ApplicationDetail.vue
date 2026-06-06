@@ -127,7 +127,7 @@
             <el-divider />
             <div class="cost-item total">
               <span class="label">部门预算余额</span>
-              <span class="value">¥{{ 85000.toLocaleString() }}</span>
+              <span class="value">¥{{ (85000).toLocaleString() }}</span>
             </div>
           </div>
         </el-card>

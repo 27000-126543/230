@@ -10,9 +10,9 @@ async function migrate() {
 
     await sequelize.authenticate();
     logger.info('✓ 数据库连接验证成功');
-    logger.info(`  主机: ${sequelize.config.host}`);
-    logger.info(`  数据库: ${sequelize.config.database}`);
-    logger.info(`  方言: ${sequelize.options.dialect}`);
+    logger.info(`  主机: ${(sequelize as any).config.host}`);
+    logger.info(`  数据库: ${(sequelize as any).config.database}`);
+    logger.info(`  方言: ${sequelize.getDialect()}`);
 
     logger.info('  正在设置模型关联...');
     setupAssociations();
