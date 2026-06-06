@@ -15,6 +15,12 @@ const upload = multer({
 });
 
 router.get('/health', reportController.getHealth);
+router.get('/departments', reportController.getDepartments);
+router.get('/employees', reportController.getEmployees);
+router.get('/employees/roles', reportController.getEmployeeRoles);
+router.get('/dashboard/stats', reportController.getDashboardStats);
+router.get('/dashboard/recent-applications', reportController.getRecentApplications);
+router.get('/dashboard/todos', reportController.getTodoList);
 
 router.post(
   '/travel/applications',

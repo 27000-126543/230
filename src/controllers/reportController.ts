@@ -3,6 +3,8 @@ import ReportService from '../services/ReportService';
 import ScheduledTaskService from '../services/ScheduledTaskService';
 import LogAlertService from '../services/LogAlertService';
 import { AppError } from '../middleware/errorHandler';
+import { Department, Employee, TravelApplication, Expense, Budget, Alert } from '../models';
+import { Op } from 'sequelize';
 import path from 'path';
 
 export const generateMonthlyReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -140,3 +142,211 @@ export const getHealth = (_req: Request, res: Response): void => {
     },
   });
 };
+
+export const getDepartments = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const departments = await Department.findAll({
+      attributes: ['id', 'name', 'parentId', 'managerId'],
+      order: [['name', 'ASC']],
+    });
+    res.json({
+      success: true,
+      data: departments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEmployees = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const employees = await Employee.findAll({
+      attributes: ['id', 'name', 'email', 'role', 'departmentId', 'travelPreference'],
+      order: [['name', 'ASC']],
+    });
+    res.json({
+      success: true,
+      data: employees,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEmployeeRoles = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const roleMap = {
+      STAFF: '普通员工',
+      MANAGER: '部门经理',
+      DIRECTOR: '总监',
+      CFO: 'CFO',
+      ADMIN: '管理员',
+    };
+    res.json({
+      success: true,
+      data: roleMap,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { employeeId, departmentId } = req.query;
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const where: any = {};
+    if (employeeId) {
+      where.employeeId = employeeId;
+    }
+    if (departmentId) {
+      where.departmentId = departmentId;
+    }
+
+    const [myApplications, pendingApproval, monthExpenses, budget] = await Promise.all([
+      TravelApplication.count({ where: { ...where, createdAt: { [Op.gte]: monthStart } } }),
+      TravelApplication.count({
+        where: {
+          status: 'PENDING_APPROVAL',
+          ...(employeeId ? { currentApproverId: employeeId } : {}),
+        },
+      }),
+      Expense.sum('amount', {
+        where: {
+          ...(employeeId ? { employeeId } : {}),
+          expenseDate: { [Op.between]: [monthStart, monthEnd] },
+          status: { [Op.ne]: 'REJECTED' },
+        },
+      }),
+      departmentId
+        ? Budget.findOne({
+            where: {
+              departmentId,
+              year: now.getFullYear(),
+              month: now.getMonth() + 1,
+            },
+          })
+        : null,
+    ]);
+
+    const totalExpense = monthExpenses || 0;
+    const budgetLeft = budget ? Math.max(0, budget.totalAmount - budget.usedAmount - totalExpense) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        myApplications,
+        pendingApproval,
+        totalExpense,
+        budgetLeft,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getRecentApplications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { employeeId, limit = 5 } = req.query;
+
+    const where: any = {};
+    if (employeeId) {
+      where.employeeId = employeeId;
+    }
+
+    const applications = await TravelApplication.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit as string),
+      attributes: ['id', 'applicationNo', 'purpose', 'destination', 'startDate', 'endDate', 'estimatedCost', 'status', 'createdAt'],
+    });
+
+    res.json({
+      success: true,
+      data: applications,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTodoList = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { employeeId, limit = 10 } = req.query;
+
+    const todos: any[] = [];
+
+    const pendingApprovals = await TravelApplication.findAll({
+      where: {
+        status: 'PENDING_APPROVAL',
+        ...(employeeId ? { currentApproverId: employeeId } : {}),
+      },
+      order: [['createdAt', 'ASC']],
+      limit: Math.min(parseInt(limit as string), 5),
+      attributes: ['id', 'applicationNo', 'purpose', 'destination', 'createdAt'],
+    });
+
+    pendingApprovals.forEach((app) => {
+      todos.push({
+        type: 'warning',
+        content: `${app.destination}出差申请等待审批`,
+        time: formatTimeAgo(app.createdAt),
+      });
+    });
+
+    const anomalyExpenses = await Expense.findAll({
+      where: {
+        isAnomaly: true,
+        ...(employeeId ? { employeeId } : {}),
+      },
+      order: [['createdAt', 'ASC']],
+      limit: 3,
+    });
+
+    anomalyExpenses.forEach((exp) => {
+      todos.push({
+        type: 'danger',
+        content: `费用异常待处理: ¥${exp.amount}`,
+        time: formatTimeAgo(exp.createdAt),
+      });
+    });
+
+    const pendingAlerts = await Alert.findAll({
+      where: { status: 'PENDING' },
+      order: [['createdAt', 'ASC']],
+      limit: 3,
+    });
+
+    pendingAlerts.forEach((alert) => {
+      todos.push({
+        type: 'info',
+        content: alert.message,
+        time: formatTimeAgo(alert.createdAt),
+      });
+    });
+
+    res.json({
+      success: true,
+      data: todos,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - new Date(date).getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+
+  if (hours < 1) return '刚刚';
+  if (hours < 24) return `${hours}小时前`;
+  if (days < 7) return `${days}天前`;
+  return new Date(date).toLocaleDateString('zh-CN');
+}

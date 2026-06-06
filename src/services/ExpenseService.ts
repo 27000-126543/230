@@ -43,12 +43,20 @@ class ExpenseService {
         },
       });
 
-      const text = result.data.text;
-      const confidence = result.data.confidence;
+      if (!result || !result.data) {
+        throw new Error('OCR返回结果为空');
+      }
+
+      const text = result.data.text || '';
+      const confidence = result.data.confidence || 0;
+
+      if (!text.trim()) {
+        logger.warn('OCR识别文本为空，可能图片不清晰');
+      }
 
       const extracted = this.parseOCRText(text);
 
-      logger.info(`OCR识别完成 - 置信度: ${confidence}%, 金额: ${extracted.amount}`);
+      logger.info(`OCR识别完成 - 置信度: ${confidence}%, 金额: ${extracted.amount}, 文本长度: ${text.length}`);
 
       return {
         ...extracted,
@@ -56,8 +64,16 @@ class ExpenseService {
         rawText: text,
       };
     } catch (error) {
-      logger.error('OCR识别失败:', error);
-      throw new Error('OCR识别失败');
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      logger.error(`OCR识别失败 - ${errorMessage}:`, error);
+      
+      if (errorMessage.includes('ENOENT')) {
+        throw new Error('图片文件不存在，请重新上传');
+      }
+      if (errorMessage.includes('unsupported image format')) {
+        throw new Error('不支持的图片格式，请使用 JPG 或 PNG 格式');
+      }
+      throw new Error(`OCR识别失败: ${errorMessage}`);
     }
   }
 
@@ -283,31 +299,55 @@ class ExpenseService {
     imageBuffer: Buffer,
     originalName: string
   ): Promise<Expense> {
-    const uploadDir = config.upload.dir;
-    await fs.mkdir(uploadDir, { recursive: true });
+    let filePath: string | undefined;
+    
+    try {
+      const uploadDir = config.upload.dir;
+      await fs.mkdir(uploadDir, { recursive: true });
 
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${path.extname(originalName)}`;
-    const filePath = path.join(uploadDir, fileName);
+      const ext = path.extname(originalName) || '.jpg';
+      const allowedExts = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
+      if (!allowedExts.includes(ext.toLowerCase())) {
+        throw new Error(`不支持的文件格式: ${ext}，请上传 JPG、PNG、BMP 或 GIF 格式图片`);
+      }
 
-    await fs.writeFile(filePath, imageBuffer);
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+      filePath = path.join(uploadDir, fileName);
 
-    const ocrResult = await this.performOCR(filePath);
+      await fs.writeFile(filePath, imageBuffer);
+      logger.info(`图片已保存: ${filePath}, 大小: ${(imageBuffer.length / 1024).toFixed(2)}KB`);
 
-    if (!ocrResult.amount) {
-      throw new Error('无法识别小票金额');
+      const ocrResult = await this.performOCR(filePath);
+
+      if (!ocrResult.amount || ocrResult.amount <= 0) {
+        throw new Error('无法从小票中识别有效金额，请确保图片清晰且包含金额信息');
+      }
+
+      const expense = await this.createExpense(
+        applicationId,
+        employeeId,
+        ocrResult.category || ExpenseCategory.OTHER,
+        ocrResult.amount,
+        ocrResult.date || new Date(),
+        filePath,
+        { rawText: ocrResult.rawText },
+        ocrResult.confidence,
+        ocrResult.merchant
+      );
+
+      logger.info(`费用创建成功 - 申请: ${applicationId}, 金额: ${ocrResult.amount}, OCR置信度: ${ocrResult.confidence}%`);
+      return expense;
+    } catch (error) {
+      if (filePath) {
+        try {
+          await fs.unlink(filePath);
+          logger.debug(`清理临时文件: ${filePath}`);
+        } catch (cleanupError) {
+          logger.warn(`清理临时文件失败: ${filePath}`, cleanupError);
+        }
+      }
+      throw error;
     }
-
-    return this.createExpense(
-      applicationId,
-      employeeId,
-      ocrResult.category || ExpenseCategory.OTHER,
-      ocrResult.amount,
-      ocrResult.date || new Date(),
-      filePath,
-      { rawText: ocrResult.rawText },
-      ocrResult.confidence,
-      ocrResult.merchant
-    );
   }
 
   async provideExplanation(expenseId: string, explanation: string): Promise<Expense> {
