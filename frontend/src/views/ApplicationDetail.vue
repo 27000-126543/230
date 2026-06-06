@@ -289,38 +289,26 @@ async function fetchDetail() {
       status: 'APPROVED',
       travelType: 'domestic',
       travelPreference: 'economy',
-      purpose: '客户技术交流与项目演示',
-      destination: '北京',
-      departureCity: '上海',
-      startDate: '2024-02-01',
-      endDate: '2024-02-05',
-      estimatedCost: 5000,
-      budgetOverrunPercent: 0,
-      necessityCheckResult: {
-        isNecessary: true,
-        suggestions: ['建议提前准备技术方案PPT']
-      }
+      purpose: '',
+      destination: '',
+      departureCity: '',
+      startDate: '',
+      endDate: '',
+      estimatedCost: 0,
+      budgetOverrunPercent: 0
     })
-
-    approvalRecords.push(
-      { approverRole: '部门经理', action: 'APPROVED', approverName: '王五', comments: '同意', createdAt: '2024-01-28 10:30' },
-      { approverRole: '总监', action: 'PENDING' }
-    )
-
-    expenses.push(
-      { category: 'transportation', amount: 2400, expenseDate: '2024-02-01', merchant: '国航', status: 'APPROVED', isAnomaly: false },
-      { category: 'accommodation', amount: 2000, expenseDate: '2024-02-01', merchant: '希尔顿酒店', status: 'MATCHED', isAnomaly: false }
-    )
-    expenseSummary.total = 4400
   }
 
   try {
     const res = await api.get(`/expenses/application/${id}`)
     if (res.data.success) {
-      expenses.splice(0, expenses.length, ...res.data.data.expenses)
-      Object.assign(expenseSummary, res.data.data.summary)
+      expenses.splice(0, expenses.length, ...(res.data.data.expenses || res.data.data || []))
+      Object.assign(expenseSummary, res.data.data.summary || {})
     }
-  } catch (e) {}
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载费用列表失败'
+    ElMessage.error(errorMsg)
+  }
 }
 
 function goToBooking() {
@@ -336,9 +324,9 @@ async function startTrip() {
     await api.post(`/travel/applications/${route.params.id}/start`)
     ElMessage.success('行程已开始')
     fetchDetail()
-  } catch (e) {
-    application.status = 'IN_PROGRESS'
-    ElMessage.success('行程已开始')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '开始行程失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -347,9 +335,9 @@ async function completeTrip() {
     await api.post(`/travel/applications/${route.params.id}/complete`)
     ElMessage.success('行程已结束')
     fetchDetail()
-  } catch (e) {
-    application.status = 'COMPLETED'
-    ElMessage.success('行程已结束')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '结束行程失败'
+    ElMessage.error(errorMsg)
   }
 }
 

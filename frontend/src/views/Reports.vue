@@ -224,18 +224,9 @@ async function fetchReport() {
         departmentDetails.splice(0, departmentDetails.length, ...res.data.data.departments)
       }
     }
-  } catch (e) {
-    reportData.summary = {
-      totalSpent: 110000,
-      tripCount: 20,
-      avgPerPerson: 5500,
-      overrunCount: 2
-    }
-    departmentDetails.splice(0, departmentDetails.length,
-      { departmentName: '技术研发部', totalSpent: 55000, budget: 50000, budgetUsage: 110, overrun: 5000, tripCount: 10, avgPerTrip: 5500, avgApprovalHours: 4.5 },
-      { departmentName: '市场营销部', totalSpent: 40000, budget: 40000, budgetUsage: 100, overrun: 0, tripCount: 6, avgPerTrip: 6667, avgApprovalHours: 3.2 },
-      { departmentName: '财务部', totalSpent: 15000, budget: 20000, budgetUsage: 75, overrun: 0, tripCount: 4, avgPerTrip: 3750, avgApprovalHours: 2.8 }
-    )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载报表失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -243,8 +234,10 @@ async function exportPDF() {
   try {
     const [year, month] = reportDate.value.split('-')
     window.open(`/api/reports/monthly/${year}/${month}/pdf`, '_blank')
-  } catch (e) {
-    ElMessage.success('PDF导出成功（演示模式）')
+    ElMessage.success('PDF导出中...')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || 'PDF导出失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -252,8 +245,10 @@ async function exportExcel() {
   try {
     const [year, month] = reportDate.value.split('-')
     window.open(`/api/reports/monthly/${year}/${month}/excel`, '_blank')
-  } catch (e) {
-    ElMessage.success('Excel导出成功（演示模式）')
+    ElMessage.success('Excel导出中...')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || 'Excel导出失败'
+    ElMessage.error(errorMsg)
   }
 }
 

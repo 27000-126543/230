@@ -263,17 +263,13 @@ async function fetchData() {
       }
     })
     if (res.data.success) {
-      tableData.splice(0, tableData.length, ...res.data.data.rows)
-      pagination.total = res.data.data.count
+      const data = res.data.data
+      tableData.splice(0, tableData.length, ...(data.rows || data.data || []))
+      pagination.total = data.count || data.total || tableData.length
     }
-  } catch (e) {
-    tableData.push(
-      { id: 'log1', operationType: 'CREATE', resourceType: 'TravelApplication', resourceId: 'app1', operatorName: '赵六', ip: '192.168.1.100', level: 'INFO', details: '创建差旅申请: 北京出差', createdAt: '2024-02-01T09:00:00' },
-      { id: 'log2', operationType: 'APPROVE', resourceType: 'TravelApplication', resourceId: 'app1', operatorName: '王五', ip: '192.168.1.101', level: 'INFO', details: '批准差旅申请', createdAt: '2024-02-01T10:30:00' },
-      { id: 'log3', operationType: 'EXPENSE', resourceType: 'Expense', resourceId: 'exp1', operatorName: '赵六', ip: '192.168.1.100', level: 'WARNING', details: '异常费用标记: 消费日期不符', createdAt: '2024-02-02T14:00:00' },
-      { id: 'log4', operationType: 'BOOKING', resourceType: 'Booking', resourceId: 'bk1', operatorName: '赵六', ip: '192.168.1.100', level: 'INFO', details: '预订航班 CA1234', createdAt: '2024-02-01T11:00:00' }
-    )
-    pagination.total = 4
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载日志失败'
+    ElMessage.error(errorMsg)
   } finally {
     loading.value = false
   }
@@ -283,13 +279,11 @@ async function fetchAlerts() {
   try {
     const res = await api.get('/alerts/pending')
     if (res.data.success) {
-      alertList.splice(0, alertList.length, ...res.data.data)
+      alertList.splice(0, alertList.length, ...(res.data.data || []))
     }
-  } catch (e) {
-    alertList.push(
-      { id: 'alert1', alertType: 'BUDGET_OVERRUN', severity: 'HIGH', title: '预算超支预警', message: '技术研发部本月预算超支10%，请关注', status: 'PENDING', createdAt: '2024-02-15T10:00:00' },
-      { id: 'alert2', alertType: 'ANOMALY_EXPENSE', severity: 'MEDIUM', title: '异常费用提醒', message: '员工赵六有1笔异常费用待处理', status: 'ACKNOWLEDGED', createdAt: '2024-02-14T15:30:00' }
-    )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载预警失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -311,9 +305,9 @@ async function acknowledge(row: any) {
     await api.post(`/alerts/${row.id}/acknowledge`, { operatorId: userStore.currentUser?.id })
     ElMessage.success('已确认')
     row.status = 'ACKNOWLEDGED'
-  } catch (e) {
-    ElMessage.success('已确认')
-    row.status = 'ACKNOWLEDGED'
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '操作失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -325,9 +319,9 @@ async function resolve(row: any) {
     })
     ElMessage.success('已标记解决')
     row.status = 'RESOLVED'
-  } catch (e) {
-    ElMessage.success('已标记解决')
-    row.status = 'RESOLVED'
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '操作失败'
+    ElMessage.error(errorMsg)
   }
 }
 

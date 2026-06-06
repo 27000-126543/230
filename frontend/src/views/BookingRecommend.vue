@@ -321,9 +321,9 @@ async function confirmBooking(type: string) {
 
     ElMessage.success('预订成功，库存已锁定')
     router.push('/bookings')
-  } catch (e) {
-    ElMessage.success('预订成功（演示模式）')
-    router.push('/bookings')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '预订失败'
+    ElMessage.error(errorMsg)
   }
 }
 

@@ -264,50 +264,13 @@ async function fetchData() {
       }
     })
     if (res.data.success) {
-      tableData.splice(0, tableData.length, ...res.data.data.rows)
-      pagination.total = res.data.data.count
+      const data = res.data.data
+      tableData.splice(0, tableData.length, ...(data.rows || data.data || []))
+      pagination.total = data.count || data.total || tableData.length
     }
-  } catch (e) {
-    tableData.push(
-      {
-        id: 'exp1',
-        employeeName: '赵六',
-        category: 'transportation',
-        amount: 2400,
-        expenseDate: '2024-02-01',
-        merchant: '国航',
-        ocrConfidence: 95,
-        isAnomaly: false,
-        status: 'APPROVED',
-        applicationId: 'app1'
-      },
-      {
-        id: 'exp2',
-        employeeName: '赵六',
-        category: 'accommodation',
-        amount: 2000,
-        expenseDate: '2024-02-01',
-        merchant: '希尔顿酒店',
-        ocrConfidence: 92,
-        isAnomaly: false,
-        status: 'MATCHED',
-        applicationId: 'app1'
-      },
-      {
-        id: 'exp3',
-        employeeName: '赵六',
-        category: 'meals',
-        amount: 580,
-        expenseDate: '2024-02-10',
-        merchant: '全聚德',
-        ocrConfidence: 88,
-        isAnomaly: true,
-        anomalyReason: '消费日期不在出差范围内',
-        status: 'ANOMALY',
-        applicationId: 'app2'
-      }
-    )
-    pagination.total = 3
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载费用列表失败'
+    ElMessage.error(errorMsg)
   } finally {
     loading.value = false
   }
@@ -363,9 +326,9 @@ async function approve(row: any) {
     await api.post(`/expenses/${row.id}/approve`, { approverId: userStore.currentUser?.id })
     ElMessage.success('已审批')
     row.status = 'APPROVED'
-  } catch (e) {
-    ElMessage.success('已审批')
-    row.status = 'APPROVED'
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '审批失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -381,8 +344,9 @@ async function exportExpenses() {
     if (res.data.success) {
       ElMessage.success(`导出成功: ${res.data.data.filePath}`)
     }
-  } catch (e) {
-    ElMessage.success('导出成功（演示模式）')
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '导出失败'
+    ElMessage.error(errorMsg)
   }
 }
 
