@@ -369,7 +369,7 @@ async function fetchExpenses() {
   try {
     const res = await api.get(`/expenses/application/${applicationId}`)
     if (res.data.success) {
-      expenseList.splice(0, expenseList.length, ...(res.data.data.expenses || res.data.data || [])
+      expenseList.splice(0, expenseList.length, ...(res.data.data.expenses || res.data.data || []))
     }
   } catch (error: any) {
     const errorMsg = error.response?.data?.error?.message || error.message || '加载费用列表失败'

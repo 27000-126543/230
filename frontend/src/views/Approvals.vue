@@ -187,78 +187,42 @@ async function fetchPending() {
     if (userStore.currentUser) {
       const res = await api.get(`/travel/approvers/${userStore.currentUser.id}/pending`)
       if (res.data.success) {
-        pendingList.splice(0, pendingList.length, ...res.data.data)
+        const data = res.data.data
+        pendingList.splice(0, pendingList.length, ...(data.rows || data.data || []))
       }
     }
-  } catch (e) {
-    pendingList.push(
-      {
-        id: 'app2',
-        employeeName: '赵六',
-        departmentName: '技术研发部',
-        purpose: '参加行业峰会',
-        destination: '深圳',
-        startDate: '2024-02-10',
-        endDate: '2024-02-12',
-        estimatedCost: 3500,
-        budgetOverrunPercent: 5,
-        createdAt: '2024-02-01T10:00:00'
-      },
-      {
-        id: 'app4',
-        employeeName: '钱七',
-        departmentName: '市场营销部',
-        purpose: '客户拜访',
-        destination: '广州',
-        startDate: '2024-02-15',
-        endDate: '2024-02-18',
-        estimatedCost: 8000,
-        budgetOverrunPercent: 35,
-        createdAt: '2024-02-02T09:00:00'
-      }
-    )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载待审批列表失败'
+    ElMessage.error(errorMsg)
   } finally {
     loading.value = false
   }
 }
 
-function fetchMy() {
-  myList.push(
-    {
-      id: 'app1',
-      purpose: '客户技术交流',
-      destination: '北京',
-      startDate: '2024-02-01',
-      endDate: '2024-02-05',
-      estimatedCost: 5000,
-      budgetOverrunPercent: 0,
-      approvalLevel: 'MANAGER',
-      status: 'APPROVED'
-    },
-    {
-      id: 'app3',
-      purpose: '项目现场支持',
-      destination: '广州',
-      startDate: '2024-02-20',
-      endDate: '2024-02-25',
-      estimatedCost: 6500,
-      budgetOverrunPercent: 30,
-      approvalLevel: 'DIRECTOR',
-      status: 'IN_PROGRESS'
+async function fetchMy() {
+  try {
+    if (userStore.currentUser) {
+      const res = await api.get(`/travel/employees/${userStore.currentUser.id}/applications`)
+      if (res.data.success) {
+        const data = res.data.data
+        myList.splice(0, myList.length, ...(data.rows || data.data || []))
+      }
     }
-  )
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '加载我的申请失败'
+    ElMessage.error(errorMsg)
+  }
 }
 
-function fetchApproved() {
-  approvedList.push(
-    {
-      id: 'app1',
-      employeeName: '赵六',
-      purpose: '客户技术交流',
-      myAction: 'APPROVED',
-      approvedAt: '2024-01-28T10:30:00'
+async function fetchApproved() {
+  try {
+    const res = await api.get('/travel/approved-approvals')
+    if (res.data.success) {
+      approvedList.splice(0, approvedList.length, ...(res.data.data || []))
     }
-  )
+  } catch (error: any) {
+    // 已审批列表接口可能不存在，静默失败
+  }
 }
 
 function viewDetail(row: any) {
@@ -276,7 +240,10 @@ async function approve(row: any) {
     ElMessage.success('已批准')
     const idx = pendingList.findIndex(i => i.id === row.id)
     if (idx > -1) pendingList.splice(idx, 1)
-  } catch (e) {}
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '审批失败'
+    ElMessage.error(errorMsg)
+  }
 }
 
 function reject(row: any) {
@@ -286,6 +253,10 @@ function reject(row: any) {
 }
 
 async function confirmReject() {
+  if (!rejectForm.reason.trim()) {
+    ElMessage.warning('请输入拒绝原因')
+    return
+  }
   try {
     await api.post(`/travel/applications/${rejectForm.currentId}/reject`, {
       approverId: userStore.currentUser?.id,
@@ -295,17 +266,19 @@ async function confirmReject() {
     rejectDialogVisible.value = false
     const idx = pendingList.findIndex(i => i.id === rejectForm.currentId)
     if (idx > -1) pendingList.splice(idx, 1)
-  } catch (e) {
-    ElMessage.success('已拒绝')
-    rejectDialogVisible.value = false
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '拒绝失败'
+    ElMessage.error(errorMsg)
   }
 }
 
 onMounted(async () => {
   await userStore.initMockUser()
-  fetchPending()
-  fetchMy()
-  fetchApproved()
+  await Promise.all([
+    fetchPending(),
+    fetchMy(),
+    fetchApproved()
+  ])
 })
 </script>
 

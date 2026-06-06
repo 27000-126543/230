@@ -190,3 +190,18 @@ export const cancelBooking = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const getAllBookings = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { Booking } = require('../models');
+    const bookings = await Booking.findAll({
+      order: [['createdAt', 'DESC']],
+    });
+    res.json({
+      success: true,
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

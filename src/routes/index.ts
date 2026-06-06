@@ -89,6 +89,8 @@ router.post(
   travelController.cancelBooking
 );
 
+router.get('/travel/bookings', travelController.getAllBookings);
+
 router.post(
   '/expenses',
   validateRequest(schemas.createExpense),
