@@ -194,42 +194,44 @@ export const getEmployeeRoles = async (_req: Request, res: Response, next: NextF
 export const getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { employeeId, departmentId } = req.query;
+    const employeeIdStr = employeeId as string | undefined;
+    const departmentIdStr = departmentId as string | undefined;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
     const where: any = {};
-    if (employeeId) {
-      where.employeeId = employeeId;
+    if (employeeIdStr) {
+      where.employeeId = employeeIdStr;
     }
-    if (departmentId) {
-      where.departmentId = departmentId;
+    if (departmentIdStr) {
+      where.departmentId = departmentIdStr;
     }
 
     const [myApplications, pendingApproval, monthExpenses, budget] = await Promise.all([
-      TravelApplication.count({ where: { ...where, createdAt: { [Op.gte]: monthStart } } }),
+      TravelApplication.count({ where: { ...where, createdAt: { [Op.gte]: monthStart } } as any),
       TravelApplication.count({
         where: {
           status: 'PENDING_APPROVAL',
-          ...(employeeId ? { currentApproverId: employeeId } : {}),
+          ...(employeeIdStr ? { currentApproverId: employeeIdStr } : {}),
         },
-      }),
+      } as any),
       Expense.sum('amount', {
         where: {
-          ...(employeeId ? { employeeId } : {}),
+          ...(employeeIdStr ? { employeeId: employeeIdStr } : {}),
           expenseDate: { [Op.between]: [monthStart, monthEnd] },
           status: { [Op.ne]: 'REJECTED' },
         },
-      }),
-      departmentId
+      } as any),
+      departmentIdStr
         ? Budget.findOne({
             where: {
-              departmentId,
+              departmentId: departmentIdStr,
               year: now.getFullYear(),
               month: now.getMonth() + 1,
             },
-          })
+          } as any)
         : null,
     ]);
 

@@ -1,12 +1,13 @@
 import Department from './Department';
 import Employee from './Employee';
 import Budget from './Budget';
-import TravelApplication from './TravelApplication';
-import ApprovalRecord from './ApprovalRecord';
-import Booking from './Booking';
-import Expense from './Expense';
-import OperationLog from './OperationLog';
-import Alert from './Alert';
+import TravelApplication, { TravelApplicationStatus, NecessityCheckResult, TravelType } from './TravelApplication';
+import ApprovalRecord, { ApprovalAction } from './ApprovalRecord';
+import Booking, { BookingType, BookingStatus } from './Booking';
+import Expense, { ExpenseCategory, ExpenseStatus } from './Expense';
+import OperationLog, { OperationType, ResourceType, LogLevel } from './OperationLog';
+import Alert, { AlertType, AlertSeverity, AlertStatus } from './Alert';
+import { EmployeeRole, TravelPreference } from './Employee';
 
 const setupAssociations = (): void => {
   Department.hasMany(Employee, { foreignKey: 'departmentId', as: 'employees' });
@@ -45,4 +46,20 @@ export {
   OperationLog,
   Alert,
   setupAssociations,
+  TravelApplicationStatus,
+  NecessityCheckResult,
+  TravelType,
+  ApprovalAction,
+  BookingType,
+  BookingStatus,
+  ExpenseCategory,
+  ExpenseStatus,
+  OperationType,
+  ResourceType,
+  LogLevel,
+  AlertType,
+  AlertSeverity,
+  AlertStatus,
+  EmployeeRole,
+  TravelPreference,
 };

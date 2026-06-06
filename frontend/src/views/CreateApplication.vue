@@ -264,17 +264,34 @@ async function submitForm() {
           ElMessage.success('申请提交成功')
           router.push('/applications')
         }
-      } catch (e) {
-        ElMessage.success('申请提交成功（演示模式）')
-        router.push('/applications')
+      } catch (error: any) {
+        const errorMsg = error.response?.data?.error?.message || error.message || '提交失败'
+        ElMessage.error(errorMsg)
       }
     }
   })
 }
 
 async function saveDraft() {
-  ElMessage.success('草稿已保存')
-  router.push('/applications')
+  try {
+    const res = await api.post('/travel/applications', {
+      employeeId: userStore.currentUser?.id,
+      travelType: form.travelType,
+      purpose: form.purpose,
+      destination: form.destination,
+      departureCity: form.departureCity,
+      startDate: form.dateRange[0],
+      endDate: form.dateRange[1],
+      notes: form.notes
+    })
+    if (res.data.success) {
+      ElMessage.success('草稿已保存')
+      router.push('/applications')
+    }
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error?.message || error.message || '保存失败'
+    ElMessage.error(errorMsg)
+  }
 }
 
 watch(() => form.purpose, checkNecessity)
